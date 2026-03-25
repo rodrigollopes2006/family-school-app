@@ -22,8 +22,7 @@ jobs:
         wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle-8.1.1-bin.zip
         export PATH=$PWD/gradle-8.1.1/bin:$PATH
-        
-        # Gerar keystore para assinar o APK
+
         keytool -genkey -v \
           -keystore familyschool.jks \
           -alias familyschool \
@@ -33,10 +32,9 @@ jobs:
           -storepass familyschool123 \
           -keypass familyschool123 \
           -dname "CN=Family School, OU=App, O=FamilySchool, L=Florida, S=FL, C=US"
-        
+
         gradle assembleRelease
-        
-        # Assinar o APK
+
         $JAVA_HOME/bin/jarsigner \
           -verbose \
           -sigalg SHA256withRSA \
@@ -46,9 +44,9 @@ jobs:
           -keypass familyschool123 \
           app/build/outputs/apk/release/app-release-unsigned.apk \
           familyschool
-        
-        # Zipalign
-        $ANDROID_HOME/build-tools/*/zipalign -v 4 \
+
+        BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools/ | tail -1)
+        $ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign -f -v 4 \
           app/build/outputs/apk/release/app-release-unsigned.apk \
           app/build/outputs/apk/release/family-school.apk
 
