@@ -17,7 +17,7 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Install Gradle
+    - name: Build and Sign APK
       run: |
         wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle-8.1.1-bin.zip
@@ -31,24 +31,28 @@ jobs:
           -validity 10000 \
           -storepass familyschool123 \
           -keypass familyschool123 \
-          -dname "CN=Family School, OU=App, O=FamilySchool, L=Florida, S=FL, C=US"
+          -dname "CN=Family School, OU=App, O=FamilySchool, L=Florida, ST=FL, C=US"
 
         gradle assembleRelease
 
-        $JAVA_HOME/bin/jarsigner \
-          -verbose \
-          -sigalg SHA256withRSA \
-          -digestalg SHA-256 \
-          -keystore familyschool.jks \
-          -storepass familyschool123 \
-          -keypass familyschool123 \
-          app/build/outputs/apk/release/app-release-unsigned.apk \
-          familyschool
+        BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools/ | sort -V | tail -1)
+        echo "Using build-tools: $BUILD_TOOLS"
 
-        BUILD_TOOLS=$(ls $ANDROID_HOME/build-tools/ | tail -1)
+        # 1. Zipalign PRIMEIRO
         $ANDROID_HOME/build-tools/$BUILD_TOOLS/zipalign -f -v 4 \
           app/build/outputs/apk/release/app-release-unsigned.apk \
-          app/build/outputs/apk/release/family-school.apk
+          app/build/outputs/apk/release/app-aligned.apk
+
+        # 2. Assinar DEPOIS do zipalign
+        $ANDROID_HOME/build-tools/$BUILD_TOOLS/apksigner sign \
+          --ks familyschool.jks \
+          --ks-pass pass:familyschool123 \
+          --key-pass pass:familyschool123 \
+          --ks-key-alias familyschool \
+          --out app/build/outputs/apk/release/family-school.apk \
+          app/build/outputs/apk/release/app-aligned.apk
+
+        echo "APK assinado com sucesso!"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
