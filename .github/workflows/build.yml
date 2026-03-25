@@ -22,10 +22,38 @@ jobs:
         wget -q https://services.gradle.org/distributions/gradle-8.1.1-bin.zip
         unzip -q gradle-8.1.1-bin.zip
         export PATH=$PWD/gradle-8.1.1/bin:$PATH
+        
+        # Gerar keystore para assinar o APK
+        keytool -genkey -v \
+          -keystore familyschool.jks \
+          -alias familyschool \
+          -keyalg RSA \
+          -keysize 2048 \
+          -validity 10000 \
+          -storepass familyschool123 \
+          -keypass familyschool123 \
+          -dname "CN=Family School, OU=App, O=FamilySchool, L=Florida, S=FL, C=US"
+        
         gradle assembleRelease
+        
+        # Assinar o APK
+        $JAVA_HOME/bin/jarsigner \
+          -verbose \
+          -sigalg SHA256withRSA \
+          -digestalg SHA-256 \
+          -keystore familyschool.jks \
+          -storepass familyschool123 \
+          -keypass familyschool123 \
+          app/build/outputs/apk/release/app-release-unsigned.apk \
+          familyschool
+        
+        # Zipalign
+        $ANDROID_HOME/build-tools/*/zipalign -v 4 \
+          app/build/outputs/apk/release/app-release-unsigned.apk \
+          app/build/outputs/apk/release/family-school.apk
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: family-school-app
-        path: app/build/outputs/apk/release/app-release-unsigned.apk
+        path: app/build/outputs/apk/release/family-school.apk
