@@ -17,6 +17,7 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import java.io.ByteArrayInputStream;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -63,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
                 if (url.contains(DOMAIN)) {
                     return false;
                 }
+                // Bloqueia qualquer URL externa
                 return true;
             }
 
@@ -77,23 +79,26 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Bloqueia navegação para youtube.com mas permite carregar
-                // os recursos do iframe normalmente (www.youtube.com/embed)
-                // Só bloqueia se for uma navegação de página inteira
-                if (!url.contains(DOMAIN) &&
-                    !url.contains("youtube.com/embed") &&
-                    !url.contains("youtube-nocookie.com") &&
-                    !url.contains("ytimg.com") &&
-                    !url.contains("googlevideo.com") &&
-                    !url.contains("googleapis.com") &&
-                    request.isForMainFrame()) {
-                    return new WebResourceResponse("text/html", "UTF-8", null);
+                // Se for frame principal e não for do nosso domínio, bloqueia
+                if (request.isForMainFrame() && !url.contains(DOMAIN)) {
+                    // Retorna página em branco em vez de carregar o YouTube
+                    return new WebResourceResponse(
+                        "text/html",
+                        "UTF-8",
+                        new ByteArrayInputStream("".getBytes())
+                    );
                 }
-                return super.shouldInterceptRequest(view, request);
+                return null;
             }
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                // Se a URL for externa, volta para o site
+                if (url != null && !url.contains(DOMAIN)) {
+                    view.stopLoading();
+                    view.goBack();
+                    return;
+                }
                 progressBar.setVisibility(View.VISIBLE);
                 progressBar.setProgress(0);
             }
