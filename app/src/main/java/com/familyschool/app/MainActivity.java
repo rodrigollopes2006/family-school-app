@@ -1,7 +1,6 @@
 package com.familyschool.app;
 
 import android.annotation.SuppressLint;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
 import android.os.Bundle;
@@ -28,6 +27,25 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout fullscreenContainer;
     private static final String HOME_URL = "https://rodrigoejulianelopes.com/login/";
     private static final String DOMAIN = "rodrigoejulianelopes.com";
+
+    private static final String BLOCK_YOUTUBE_JS =
+        "(function() {" +
+        "  document.addEventListener('click', function(e) {" +
+        "    var el = e.target;" +
+        "    for (var i = 0; i < 5; i++) {" +
+        "      if (!el) break;" +
+        "      var href = el.getAttribute ? el.getAttribute('href') : null;" +
+        "      var onclick = el.getAttribute ? el.getAttribute('onclick') : null;" +
+        "      if (href && (href.indexOf('youtube.com') >= 0 || href.indexOf('youtu.be') >= 0)) {" +
+        "        e.preventDefault(); e.stopPropagation(); return false;" +
+        "      }" +
+        "      el = el.parentElement;" +
+        "    }" +
+        "  }, true);" +
+        "  var style = document.createElement('style');" +
+        "  style.textContent = 'a[href*=\"youtube.com\"], a[href*=\"youtu.be\"] { pointer-events: none !important; }';" +
+        "  document.head && document.head.appendChild(style);" +
+        "})();";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -60,17 +78,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Permite apenas o domínio da Family School
                 if (url.contains(DOMAIN)) {
                     return false;
                 }
-                // Bloqueia tudo — YouTube, links externos, intent://, vnd.youtube://
+                // Bloqueia qualquer URL externa incluindo youtube.com
                 return true;
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                // Fallback para versões antigas do Android
                 if (url.contains(DOMAIN)) {
                     return false;
                 }
@@ -87,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
+                // Injeta JS que bloqueia cliques em links do YouTube
+                view.evaluateJavascript(BLOCK_YOUTUBE_JS, null);
             }
 
             @Override
