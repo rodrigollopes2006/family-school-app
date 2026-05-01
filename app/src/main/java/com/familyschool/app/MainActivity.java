@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.SslErrorHandler;
@@ -21,6 +22,7 @@ import java.io.ByteArrayInputStream;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "FSApp";
     private WebView webView;
     private ProgressBar progressBar;
     private SwipeRefreshLayout swipeRefresh;
@@ -61,30 +63,45 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
+                String method = request.getMethod();
+                boolean isMain = request.isForMainFrame();
+                Log.d(TAG, "=== shouldOverrideUrlLoading ===");
+                Log.d(TAG, "URL: " + url);
+                Log.d(TAG, "Method: " + method);
+                Log.d(TAG, "isMainFrame: " + isMain);
+
                 if (url.contains(DOMAIN)) {
+                    Log.d(TAG, "ALLOWED - is our domain");
                     return false;
                 }
-                // Bloqueia qualquer URL externa
+                Log.d(TAG, "BLOCKED - external URL");
                 return true;
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                Log.d(TAG, "=== shouldOverrideUrlLoading (legacy) ===");
+                Log.d(TAG, "URL: " + url);
                 if (url != null && url.contains(DOMAIN)) {
+                    Log.d(TAG, "ALLOWED");
                     return false;
                 }
+                Log.d(TAG, "BLOCKED");
                 return true;
             }
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Se for frame principal e não for do nosso domínio, bloqueia
-                if (request.isForMainFrame() && !url.contains(DOMAIN)) {
-                    // Retorna página em branco em vez de carregar o YouTube
+                boolean isMain = request.isForMainFrame();
+                if (isMain) {
+                    Log.d(TAG, "=== shouldInterceptRequest MAIN FRAME ===");
+                    Log.d(TAG, "URL: " + url);
+                }
+                if (isMain && !url.contains(DOMAIN)) {
+                    Log.d(TAG, "INTERCEPT BLOCKED: " + url);
                     return new WebResourceResponse(
-                        "text/html",
-                        "UTF-8",
+                        "text/html", "UTF-8",
                         new ByteArrayInputStream("".getBytes())
                     );
                 }
@@ -93,8 +110,10 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                // Se a URL for externa, volta para o site
+                Log.d(TAG, "=== onPageStarted ===");
+                Log.d(TAG, "URL: " + url);
                 if (url != null && !url.contains(DOMAIN)) {
+                    Log.d(TAG, "STOPPING external page: " + url);
                     view.stopLoading();
                     view.goBack();
                     return;
@@ -105,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                Log.d(TAG, "=== onPageFinished: " + url);
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
             }
@@ -126,6 +146,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
+                Log.d(TAG, "=== onShowCustomView ===");
                 if (customView != null) {
                     callback.onCustomViewHidden();
                     return;
