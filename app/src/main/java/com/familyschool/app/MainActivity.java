@@ -4,7 +4,8 @@ import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
 import android.os.Bundle;
-import android.util.Log;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.SslErrorHandler;
@@ -16,13 +17,13 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ProgressBar;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import java.io.ByteArrayInputStream;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "FSApp";
     private WebView webView;
     private ProgressBar progressBar;
     private SwipeRefreshLayout swipeRefresh;
@@ -31,12 +32,19 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout fullscreenContainer;
     private static final String HOME_URL = "https://rodrigoejulianelopes.com/login/";
     private static final String DOMAIN = "rodrigoejulianelopes.com";
+    private Handler mainHandler;
+
+    private void showToast(final String msg) {
+        mainHandler.post(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show());
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        mainHandler = new Handler(Looper.getMainLooper());
 
         webView = findViewById(R.id.webView);
         progressBar = findViewById(R.id.progressBar);
@@ -63,57 +71,45 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                String method = request.getMethod();
                 boolean isMain = request.isForMainFrame();
-                Log.d(TAG, "=== shouldOverrideUrlLoading ===");
-                Log.d(TAG, "URL: " + url);
-                Log.d(TAG, "Method: " + method);
-                Log.d(TAG, "isMainFrame: " + isMain);
-
+                showToast("OVERRIDE: " + url.substring(0, Math.min(url.length(), 60)));
                 if (url.contains(DOMAIN)) {
-                    Log.d(TAG, "ALLOWED - is our domain");
                     return false;
                 }
-                Log.d(TAG, "BLOCKED - external URL");
+                showToast("BLOCKED: " + url.substring(0, Math.min(url.length(), 60)));
                 return true;
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                Log.d(TAG, "=== shouldOverrideUrlLoading (legacy) ===");
-                Log.d(TAG, "URL: " + url);
+                showToast("OVERRIDE-legacy: " + (url != null ? url.substring(0, Math.min(url.length(), 60)) : "null"));
                 if (url != null && url.contains(DOMAIN)) {
-                    Log.d(TAG, "ALLOWED");
                     return false;
                 }
-                Log.d(TAG, "BLOCKED");
                 return true;
             }
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                boolean isMain = request.isForMainFrame();
-                if (isMain) {
-                    Log.d(TAG, "=== shouldInterceptRequest MAIN FRAME ===");
-                    Log.d(TAG, "URL: " + url);
-                }
-                if (isMain && !url.contains(DOMAIN)) {
-                    Log.d(TAG, "INTERCEPT BLOCKED: " + url);
-                    return new WebResourceResponse(
-                        "text/html", "UTF-8",
-                        new ByteArrayInputStream("".getBytes())
-                    );
+                if (request.isForMainFrame()) {
+                    showToast("INTERCEPT MAIN: " + url.substring(0, Math.min(url.length(), 60)));
+                    if (!url.contains(DOMAIN)) {
+                        showToast("INTERCEPT BLOCKED!");
+                        return new WebResourceResponse(
+                            "text/html", "UTF-8",
+                            new ByteArrayInputStream("".getBytes())
+                        );
+                    }
                 }
                 return null;
             }
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                Log.d(TAG, "=== onPageStarted ===");
-                Log.d(TAG, "URL: " + url);
+                showToast("PAGE STARTED: " + (url != null ? url.substring(0, Math.min(url.length(), 60)) : "null"));
                 if (url != null && !url.contains(DOMAIN)) {
-                    Log.d(TAG, "STOPPING external page: " + url);
+                    showToast("STOPPING external!");
                     view.stopLoading();
                     view.goBack();
                     return;
@@ -124,7 +120,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                Log.d(TAG, "=== onPageFinished: " + url);
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
             }
@@ -146,7 +141,6 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onShowCustomView(View view, CustomViewCallback callback) {
-                Log.d(TAG, "=== onShowCustomView ===");
                 if (customView != null) {
                     callback.onCustomViewHidden();
                     return;
