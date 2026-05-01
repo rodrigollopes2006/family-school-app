@@ -1,6 +1,7 @@
 package com.familyschool.app;
 
 import android.annotation.SuppressLint;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.http.SslError;
 import android.os.Bundle;
@@ -55,14 +56,24 @@ public class MainActivity extends AppCompatActivity {
         settings.setUserAgentString(settings.getUserAgentString() + " FamilySchoolApp");
 
         webView.setWebViewClient(new WebViewClient() {
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Permite apenas URLs do domínio da Family School
+                // Permite apenas o domínio da Family School
                 if (url.contains(DOMAIN)) {
-                    return false; // Carrega normalmente no app
+                    return false;
                 }
-                // Bloqueia YouTube, links externos e qualquer outro domínio
+                // Bloqueia tudo — YouTube, links externos, intent://, vnd.youtube://
+                return true;
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                // Fallback para versões antigas do Android
+                if (url.contains(DOMAIN)) {
+                    return false;
+                }
                 return true;
             }
 
