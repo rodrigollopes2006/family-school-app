@@ -9,6 +9,7 @@ import android.view.WindowManager;
 import android.webkit.SslErrorHandler;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -27,25 +28,6 @@ public class MainActivity extends AppCompatActivity {
     private FrameLayout fullscreenContainer;
     private static final String HOME_URL = "https://rodrigoejulianelopes.com/login/";
     private static final String DOMAIN = "rodrigoejulianelopes.com";
-
-    private static final String BLOCK_YOUTUBE_JS =
-        "(function() {" +
-        "  document.addEventListener('click', function(e) {" +
-        "    var el = e.target;" +
-        "    for (var i = 0; i < 5; i++) {" +
-        "      if (!el) break;" +
-        "      var href = el.getAttribute ? el.getAttribute('href') : null;" +
-        "      var onclick = el.getAttribute ? el.getAttribute('onclick') : null;" +
-        "      if (href && (href.indexOf('youtube.com') >= 0 || href.indexOf('youtu.be') >= 0)) {" +
-        "        e.preventDefault(); e.stopPropagation(); return false;" +
-        "      }" +
-        "      el = el.parentElement;" +
-        "    }" +
-        "  }, true);" +
-        "  var style = document.createElement('style');" +
-        "  style.textContent = 'a[href*=\"youtube.com\"], a[href*=\"youtu.be\"] { pointer-events: none !important; }';" +
-        "  document.head && document.head.appendChild(style);" +
-        "})();";
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -81,16 +63,33 @@ public class MainActivity extends AppCompatActivity {
                 if (url.contains(DOMAIN)) {
                     return false;
                 }
-                // Bloqueia qualquer URL externa incluindo youtube.com
                 return true;
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (url.contains(DOMAIN)) {
+                if (url != null && url.contains(DOMAIN)) {
                     return false;
                 }
                 return true;
+            }
+
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                // Bloqueia navegação para youtube.com mas permite carregar
+                // os recursos do iframe normalmente (www.youtube.com/embed)
+                // Só bloqueia se for uma navegação de página inteira
+                if (!url.contains(DOMAIN) &&
+                    !url.contains("youtube.com/embed") &&
+                    !url.contains("youtube-nocookie.com") &&
+                    !url.contains("ytimg.com") &&
+                    !url.contains("googlevideo.com") &&
+                    !url.contains("googleapis.com") &&
+                    request.isForMainFrame()) {
+                    return new WebResourceResponse("text/html", "UTF-8", null);
+                }
+                return super.shouldInterceptRequest(view, request);
             }
 
             @Override
@@ -103,8 +102,6 @@ public class MainActivity extends AppCompatActivity {
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
-                // Injeta JS que bloqueia cliques em links do YouTube
-                view.evaluateJavascript(BLOCK_YOUTUBE_JS, null);
             }
 
             @Override
