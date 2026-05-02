@@ -35,7 +35,15 @@ public class MainActivity extends AppCompatActivity {
     private Handler mainHandler;
 
     private void showToast(final String msg) {
-        mainHandler.post(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show());
+        mainHandler.post(() -> Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show());
+    }
+
+    private void forceHome(WebView view) {
+        mainHandler.post(() -> {
+            view.stopLoading();
+            view.clearHistory();
+            view.loadUrl(HOME_URL);
+        });
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -71,48 +79,43 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                showToast("OVERRIDE: " + url.substring(0, Math.min(url.length(), 60)));
                 if (url.contains(DOMAIN)) {
                     return false;
                 }
-                showToast("BLOCKED: " + url.substring(0, Math.min(url.length(), 60)));
+                showToast("Bloqueado: " + url.substring(0, Math.min(url.length(), 40)));
+                forceHome(view);
                 return true;
             }
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                showToast("OVERRIDE-legacy: " + (url != null ? url.substring(0, Math.min(url.length(), 60)) : "null"));
                 if (url != null && url.contains(DOMAIN)) {
                     return false;
                 }
+                showToast("Bloqueado (legacy)");
+                forceHome(view);
                 return true;
             }
 
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                if (request.isForMainFrame()) {
-                    showToast("INTERCEPT MAIN: " + url.substring(0, Math.min(url.length(), 60)));
-                    if (!url.contains(DOMAIN)) {
-                        showToast("INTERCEPT BLOCKED!");
-                        return new WebResourceResponse(
-                            "text/html", "UTF-8",
-                            new ByteArrayInputStream("".getBytes())
-                        );
-                    }
+                if (request.isForMainFrame() && !url.contains(DOMAIN)) {
+                    showToast("Interceptado: " + url.substring(0, Math.min(url.length(), 40)));
+                    forceHome(view);
+                    return new WebResourceResponse(
+                        "text/html", "UTF-8",
+                        new ByteArrayInputStream("".getBytes())
+                    );
                 }
                 return null;
             }
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                showToast("PAGE STARTED: " + (url != null ? url.substring(0, Math.min(url.length(), 60)) : "null"));
                 if (url != null && !url.contains(DOMAIN)) {
-                    showToast("STOPPING - forcing home!");
-                    view.stopLoading();
-                    // Força carregar o site em vez de goBack
-                    // para não voltar para o YouTube no histórico
-                    mainHandler.post(() -> view.loadUrl(HOME_URL));
+                    showToast("Parado: " + url.substring(0, Math.min(url.length(), 40)));
+                    forceHome(view);
                     return;
                 }
                 progressBar.setVisibility(View.VISIBLE);
@@ -121,6 +124,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+                // Se terminou de carregar uma página externa, força home
+                if (url != null && !url.contains(DOMAIN)) {
+                    forceHome(view);
+                    return;
+                }
                 progressBar.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
             }
