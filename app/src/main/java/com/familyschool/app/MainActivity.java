@@ -71,7 +71,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                boolean isMain = request.isForMainFrame();
                 showToast("OVERRIDE: " + url.substring(0, Math.min(url.length(), 60)));
                 if (url.contains(DOMAIN)) {
                     return false;
@@ -109,9 +108,11 @@ public class MainActivity extends AppCompatActivity {
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 showToast("PAGE STARTED: " + (url != null ? url.substring(0, Math.min(url.length(), 60)) : "null"));
                 if (url != null && !url.contains(DOMAIN)) {
-                    showToast("STOPPING external!");
+                    showToast("STOPPING - forcing home!");
                     view.stopLoading();
-                    view.goBack();
+                    // Força carregar o site em vez de goBack
+                    // para não voltar para o YouTube no histórico
+                    mainHandler.post(() -> view.loadUrl(HOME_URL));
                     return;
                 }
                 progressBar.setVisibility(View.VISIBLE);
